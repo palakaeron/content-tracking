@@ -1,0 +1,1 @@
+import {ButtonHTMLAttributes}from'react';export function Button({className='',...p}:ButtonHTMLAttributes<HTMLButtonElement>){return <button className={`focus-ring rounded-lg bg-brand px-3 py-2 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-50 ${className}`} {...p}/>}

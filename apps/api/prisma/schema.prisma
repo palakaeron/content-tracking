@@ -1,0 +1,145 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url = env("DATABASE_URL")
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum ContentType {
+  IMAGE
+  VIDEO
+  TEXT
+}
+
+enum ContentStatus {
+  PENDING
+  SCANNING
+  AVAILABLE
+  REJECTED
+  DELETED
+}
+
+enum AlertSeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum AlertStatus {
+  NEW
+  REVIEWING
+  DISMISSED
+  CONFIRMED
+}
+
+model User {
+  id String @id @default(uuid())
+  email String @unique
+  name String
+  passwordHash String
+  role Role @default(USER)
+  emailVerifiedAt DateTime?
+  failedLoginCount Int @default(0)
+  lockedUntil DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  contents Content[]
+  sessions Session[]
+  alerts Alert[]
+  auditLogs AuditLog[]
+}
+
+model Session {
+  id String @id @default(uuid())
+  userId String
+  familyId String
+  tokenHash String @unique
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime @default(now())
+  replacedById String?
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([familyId])
+}
+
+model Content {
+  id String @id @default(uuid())
+  ownerId String
+  title String
+  description String?
+  type ContentType
+  textBody String?
+  storageKey String?
+  mimeType String?
+  byteSize Int?
+  status ContentStatus @default(PENDING)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  owner User @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  reports Report[]
+
+  @@index([ownerId, createdAt])
+  @@index([ownerId, status])
+}
+
+model Report {
+  id String @id @default(uuid())
+  contentId String
+  sourceUrl String
+  confidence Float
+  matchType String
+  detectedAt DateTime @default(now())
+  content Content @relation(fields: [contentId], references: [id], onDelete: Cascade)
+  alert Alert?
+
+  @@index([contentId, detectedAt])
+}
+
+model Alert {
+  id String @id @default(uuid())
+  ownerId String
+  reportId String @unique
+  severity AlertSeverity
+  status AlertStatus @default(NEW)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  owner User @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  report Report @relation(fields: [reportId], references: [id], onDelete: Cascade)
+
+  @@index([ownerId, status])
+  @@index([ownerId, createdAt])
+}
+
+model AuditLog {
+  id String @id @default(uuid())
+  actorId String?
+  action String
+  ip String?
+  metadata Json?
+  createdAt DateTime @default(now())
+  user User? @relation(fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([actorId, createdAt])
+}
+
+model OneTimeToken {
+  id String @id @default(uuid())
+  userId String
+  purpose String
+  tokenHash String @unique
+  expiresAt DateTime
+  usedAt DateTime?
+  createdAt DateTime @default(now())
+
+  @@index([userId, purpose])
+}

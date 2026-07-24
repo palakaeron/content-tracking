@@ -1,0 +1,1 @@
+import { prisma } from '../config/prisma.js'; export const audit=(actorId:string|undefined,action:string,ip:string|undefined,metadata?:object)=>prisma.auditLog.create({data:{actorId,action,ip,metadata}});
