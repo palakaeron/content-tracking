@@ -17,7 +17,7 @@ export default function NotFound() {
       <h2 className="mb-6 text-2xl font-semibold text-ink-secondary">Page not found</h2>
       
       <p className="mb-8 max-w-md text-muted">
-        The page you are looking for doesn't exist or has been moved. 
+        The page you are looking for doesn&apos;t exist or has been moved.
         Please check the URL or navigate back to the dashboard.
       </p>
       

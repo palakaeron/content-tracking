@@ -21,6 +21,11 @@ export const contentCreateSchema = contentBaseSchema.superRefine((value, ctx) =>
 export const contentUpdateSchema = contentBaseSchema.omit({ type: true }).partial();
 export const paginationSchema = z.object({ page: z.coerce.number().int().min(1).default(1), limit: z.coerce.number().int().min(1).max(100).default(20), search: z.string().max(140).optional() });
 export const alertUpdateSchema = z.object({ status: z.enum(alertStatuses) });
+export const contentUploadSchema = z.object({
+  title: z.string().trim().min(1).max(140),
+  description: z.string().trim().max(2000).optional(),
+  type: z.enum(['IMAGE', 'VIDEO']),
+});
 export type ContentType = z.infer<typeof contentBaseSchema>['type'];
 export type ApiSuccess<T> = { success: true; data: T; meta?: Record<string, unknown> };
 export type ApiFailure = { success: false; error: { code: string; message: string; details?: unknown } };

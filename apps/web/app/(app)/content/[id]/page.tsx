@@ -32,7 +32,7 @@ export default function ContentDetail() {
     return (
       <div className="flex flex-col items-center justify-center py-24 text-center">
         <h2 className="text-heading font-bold text-ink">Asset Not Found</h2>
-        <p className="mt-2 text-muted">This asset may have been deleted or you don't have access.</p>
+        <p className="mt-2 text-muted">This asset may have been deleted or you don&apos;t have access.</p>
         <button onClick={() => router.push('/content')} className="btn btn-primary mt-6">Back to Library</button>
       </div>
     );

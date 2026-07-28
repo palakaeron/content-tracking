@@ -1,3 +1,110 @@
-import bcrypt from 'bcrypt'; import crypto from 'node:crypto'; import { prisma } from '../config/prisma.js'; import { AppError } from '../utils/errors.js'; import { accessToken,hash,opaque } from './token.service.js'; import { audit } from './audit.service.js';
-const refreshDays=7; const issue=async(user:{id:string;role:string})=>{const raw=opaque(),familyId=crypto.randomUUID();await prisma.session.create({data:{userId:user.id,familyId,tokenHash:hash(raw),expiresAt:new Date(Date.now()+refreshDays*864e5)}});return{access:await accessToken(user.id,user.role),refresh:raw}};
-export const authService={ async signup(input:{email:string;password:string;name:string},ip?:string){const exists=await prisma.user.findUnique({where:{email:input.email.toLowerCase()}});if(exists)throw new AppError(409,'EMAIL_TAKEN','An account already exists with this email');const user=await prisma.user.create({data:{email:input.email.toLowerCase(),name:input.name,passwordHash:await bcrypt.hash(input.password,12)}});await audit(user.id,'AUTH_SIGNUP',ip);return {user:{id:user.id,email:user.email,name:user.name},...(await issue(user))}}, async login(email:string,password:string,ip?:string){const user=await prisma.user.findUnique({where:{email:email.toLowerCase()}});if(!user||!await bcrypt.compare(password,user.passwordHash)){if(user)await prisma.user.update({where:{id:user.id},data:{failedLoginCount:{increment:1},lockedUntil:user.failedLoginCount>=4?new Date(Date.now()+15*60e3):undefined}});throw new AppError(401,'INVALID_CREDENTIALS','Email or password is incorrect')}if(user.lockedUntil&&user.lockedUntil>Date.now())throw new AppError(429,'ACCOUNT_LOCKED','Try again in 15 minutes');await prisma.user.update({where:{id:user.id},data:{failedLoginCount:0,lockedUntil:null}});await audit(user.id,'AUTH_LOGIN',ip);return{user:{id:user.id,email:user.email,name:user.name},...(await issue(user))}}, async rotate(raw:string,ip?:string){const session=await prisma.session.findUnique({where:{tokenHash:hash(raw)},include:{user:true}});if(!session||session.expiresAt<Date.now()||session.revokedAt){if(session)await prisma.session.updateMany({where:{familyId:session.familyId},data:{revokedAt:new Date()}});throw new AppError(401,'REFRESH_REUSED','Session expired or invalid')}await prisma.session.update({where:{id:session.id},data:{revokedAt:new Date()}});const next=await issue(session.user);await audit(session.userId,'AUTH_REFRESH',ip);return next}, async logout(raw:string|undefined,ip?:string){if(raw){const s=await prisma.session.findUnique({where:{tokenHash:hash(raw)}});if(s)await prisma.session.updateMany({where:{familyId:s.familyId},data:{revokedAt:new Date()}})}await audit(undefined,'AUTH_LOGOUT',ip)} };
+import bcrypt from 'bcrypt';
+import crypto from 'node:crypto';
+import { prisma } from '../config/prisma.js';
+import { AppError } from '../utils/errors.js';
+import { accessToken, hash, opaque } from './token.service.js';
+import { audit } from './audit.service.js';
+
+const refreshDays = 7;
+const REFRESH_TOKEN_PATTERN = /^[A-Za-z0-9_-]{32,128}$/;
+
+function sanitizeRefreshToken(raw: string | undefined): string | null {
+  if (!raw || typeof raw !== 'string') return null;
+  const trimmed = raw.trim();
+  if (!REFRESH_TOKEN_PATTERN.test(trimmed)) return null;
+  return trimmed;
+}
+
+const issue = async (user: { id: string; role: string }) => {
+  const raw = opaque();
+  const familyId = crypto.randomUUID();
+  await prisma.session.create({
+    data: {
+      userId: user.id,
+      familyId,
+      tokenHash: hash(raw),
+      expiresAt: new Date(Date.now() + refreshDays * 86_400_000),
+    },
+  });
+  return { access: await accessToken(user.id, user.role), refresh: raw };
+};
+
+export const authService = {
+  async signup(input: { email: string; password: string; name: string }, ip?: string) {
+    const exists = await prisma.user.findUnique({ where: { email: input.email.toLowerCase() } });
+    if (exists) throw new AppError(409, 'EMAIL_TAKEN', 'An account already exists with this email');
+    const user = await prisma.user.create({
+      data: {
+        email: input.email.toLowerCase(),
+        name: input.name,
+        passwordHash: await bcrypt.hash(input.password, 12),
+      },
+    });
+    await audit(user.id, 'AUTH_SIGNUP', ip);
+    return { user: { id: user.id, email: user.email, name: user.name }, ...(await issue(user)) };
+  },
+
+  async login(email: string, password: string, ip?: string) {
+    const user = await prisma.user.findUnique({ where: { email: email.toLowerCase() } });
+    if (!user || !(await bcrypt.compare(password, user.passwordHash))) {
+      if (user) {
+        await prisma.user.update({
+          where: { id: user.id },
+          data: {
+            failedLoginCount: { increment: 1 },
+            lockedUntil: user.failedLoginCount >= 4 ? new Date(Date.now() + 15 * 60_000) : undefined,
+          },
+        });
+      }
+      throw new AppError(401, 'INVALID_CREDENTIALS', 'Email or password is incorrect');
+    }
+    if (user.lockedUntil && user.lockedUntil.getTime() > Date.now()) {
+      throw new AppError(429, 'ACCOUNT_LOCKED', 'Try again in 15 minutes');
+    }
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { failedLoginCount: 0, lockedUntil: null },
+    });
+    await audit(user.id, 'AUTH_LOGIN', ip);
+    return { user: { id: user.id, email: user.email, name: user.name }, ...(await issue(user)) };
+  },
+
+  async rotate(raw: string | undefined, ip?: string) {
+    const token = sanitizeRefreshToken(raw);
+    if (!token) throw new AppError(401, 'REFRESH_INVALID', 'Session expired or invalid');
+
+    const session = await prisma.session.findUnique({
+      where: { tokenHash: hash(token) },
+      include: { user: true },
+    });
+
+    if (!session || session.expiresAt.getTime() < Date.now() || session.revokedAt) {
+      if (session) {
+        await prisma.session.updateMany({
+          where: { familyId: session.familyId },
+          data: { revokedAt: new Date() },
+        });
+      }
+      throw new AppError(401, 'REFRESH_REUSED', 'Session expired or invalid');
+    }
+
+    await prisma.session.update({ where: { id: session.id }, data: { revokedAt: new Date() } });
+    const next = await issue(session.user);
+    await audit(session.userId, 'AUTH_REFRESH', ip);
+    return next;
+  },
+
+  async logout(raw: string | undefined, ip?: string) {
+    const token = sanitizeRefreshToken(raw);
+    if (token) {
+      const session = await prisma.session.findUnique({ where: { tokenHash: hash(token) } });
+      if (session) {
+        await prisma.session.updateMany({
+          where: { familyId: session.familyId },
+          data: { revokedAt: new Date() },
+        });
+      }
+    }
+    await audit(undefined, 'AUTH_LOGOUT', ip);
+  },
+};

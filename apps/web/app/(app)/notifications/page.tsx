@@ -73,7 +73,7 @@ export default function Notifications() {
             <div className="p-12 text-center">
               <Bell size={32} className="mx-auto mb-4 text-muted opacity-50" />
               <h3 className="font-semibold text-ink">No notifications</h3>
-              <p className="mt-1 text-sm text-muted">You're all caught up! Check back later.</p>
+              <p className="mt-1 text-sm text-muted">You&apos;re all caught up! Check back later.</p>
             </div>
           )}
         </div>

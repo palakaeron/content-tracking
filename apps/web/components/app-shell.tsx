@@ -1,8 +1,8 @@
-'use client';
-
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { api } from '../lib/api';
 import {
   LayoutDashboard, Library, Upload, BarChart3, FileText,
   Bell, Activity, Settings, HelpCircle, Search, SunMoon,
@@ -30,6 +30,25 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
+
+  const { data: alertsData } = useQuery<{ length: number }>({ 
+    queryKey: ['alerts'],
+    queryFn: () => api<{ length: number }>('/alerts'),
+    select: (data) => ({ length: Array.isArray(data) ? (data as unknown[]).length : 0 }),
+  });
+  const activeAlertCount: number = (alertsData as unknown as unknown[])?.length ?? 0;
+
+  // Close mobile sidebar and search on ESC
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setMobileOpen(false);
+        setSearchOpen(false);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
 
   const isActive = (href: string) => pathname === href || pathname.startsWith(href + '/');
 
@@ -67,9 +86,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           >
             <Icon size={18} className={isActive(href) ? '' : 'text-muted group-hover:text-ink'} />
             {!collapsed && label}
-            {!collapsed && href === '/alerts' && (
+            {!collapsed && href === '/alerts' && activeAlertCount > 0 && (
               <span className="ml-auto flex h-5 w-5 items-center justify-center rounded-full bg-danger text-[10px] font-bold text-white">
-                3
+                {activeAlertCount > 99 ? '99+' : activeAlertCount}
               </span>
             )}
           </Link>
@@ -180,8 +199,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <button
               onClick={() => setMobileOpen(true)}
               className="focus-ring rounded-lg p-2 text-muted hover:bg-surface-alt md:hidden"
+              aria-label="Open mobile navigation menu"
             >
-              <Menu size={20} />
+              <Menu size={20} aria-hidden="true" />
             </button>
             <button
               onClick={() => setSearchOpen(true)}

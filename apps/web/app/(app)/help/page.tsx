@@ -70,7 +70,7 @@ export default function Help() {
       {/* Still need help */}
       <div className="flex flex-col items-center justify-between gap-6 rounded-2xl border bg-surface-alt p-8 text-center sm:flex-row sm:text-left">
         <div>
-          <h3 className="text-heading-sm font-semibold text-ink">Can't find what you're looking for?</h3>
+          <h3 className="text-heading-sm font-semibold text-ink">Can&apos;t find what you&apos;re looking for?</h3>
           <p className="mt-1 text-muted">Our support team is available 24/7 to assist you.</p>
         </div>
         <button className="btn btn-primary shrink-0">
