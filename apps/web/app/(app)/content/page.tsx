@@ -1,1 +1,187 @@
-'use client';import{useQuery,useQueryClient}from'@tanstack/react-query';import{api}from'../../../lib/api';import{Button}from'../../../components/ui/button';import{useState}from'react';type C={id:string;title:string;type:string;status:string;createdAt:string};export default function Content(){const[q,setQ]=useState('');const qc=useQueryClient();const{data,isLoading,error}=useQuery({queryKey:['content',q],queryFn:()=>api<C[]>(`/content?page=1&limit=50&search=${encodeURIComponent(q)}`)});const create=async()=>{const title=prompt('Title for this text content');if(title){await api('/content',{method:'POST',body:JSON.stringify({title,type:'TEXT',textBody:title})});qc.invalidateQueries({queryKey:['content']})}};return <><div className="mb-7 flex flex-wrap items-end justify-between gap-3"><div><p className="text-sm text-muted">Library</p><h1 className="text-3xl font-semibold">Your content</h1></div><Button onClick={create}>Add text content</Button></div><input aria-label="Search content" value={q} onChange={e=>setQ(e.target.value)} className="mb-5 w-full rounded-lg border bg-surface px-3 py-2 text-sm" placeholder="Search by title"/>{isLoading?<div className="grid grid-cols-2 gap-4"><div className="card h-36 animate-pulse"/><div className="card h-36 animate-pulse"/></div>:error?<p className="text-danger">{error.message}</p>:data?.length?<div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{data.map(c=><article className="card p-5" key={c.id}><div className="mb-7 flex justify-between"><span className="rounded bg-brand/10 px-2 py-1 text-xs font-semibold text-brand">{c.type}</span><span className="text-xs text-muted">{c.status}</span></div><h2 className="font-semibold">{c.title}</h2><p className="mt-1 text-sm text-muted">{new Date(c.createdAt).toLocaleDateString()}</p><Button className="mt-4 bg-transparent text-brand hover:bg-brand/10" onClick={async()=>{await api(`/content/${c.id}/scan`,{method:'POST'});qc.invalidateQueries({queryKey:['summary']});alert('Scan complete')}}>Run scan</Button></article>)}</div>:<div className="card p-12 text-center"><h2 className="font-semibold">Your library is empty</h2><p className="mt-2 text-sm text-muted">Add text content now; secure media upload is available through the signed-upload API integration.</p></div>}</>}
+'use client';
+
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { api } from '../../../lib/api';
+import { useState } from 'react';
+import { Search, Plus, Filter, MoreVertical, FileText, ImageIcon, Play, CheckCircle2, ShieldAlert, Library } from 'lucide-react';
+
+type C = {
+  id: string;
+  title: string;
+  type: string;
+  status: string;
+  createdAt: string;
+};
+
+export default function Content() {
+  const [q, setQ] = useState('');
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const qc = useQueryClient();
+  
+  const { data, isLoading, error } = useQuery({
+    queryKey: ['content', q],
+    queryFn: () => api<C[]>(`/content?page=1&limit=50&search=${encodeURIComponent(q)}`),
+  });
+
+  const create = async () => {
+    const title = prompt('Enter a title for the new text content:');
+    if (title) {
+      await api('/content', {
+        method: 'POST',
+        body: JSON.stringify({ title, type: 'TEXT', textBody: title }),
+      });
+      qc.invalidateQueries({ queryKey: ['content'] });
+    }
+  };
+
+  const getIcon = (type: string) => {
+    switch (type.toUpperCase()) {
+      case 'IMAGE': return <ImageIcon size={20} className="text-brand" />;
+      case 'VIDEO': return <Play size={20} className="text-brand" />;
+      default: return <FileText size={20} className="text-brand" />;
+    }
+  };
+
+  const getStatusBadge = (status: string) => {
+    const s = status.toUpperCase();
+    if (s === 'PROTECTED') return <span className="badge badge-success"><CheckCircle2 size={12} /> Protected</span>;
+    if (s === 'AT RISK') return <span className="badge badge-danger"><ShieldAlert size={12} /> At Risk</span>;
+    return <span className="badge badge-neutral">{status}</span>;
+  };
+
+  return (
+    <div className="animate-fade-in space-y-6">
+      {/* Header */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <p className="text-sm font-semibold uppercase tracking-wider text-muted">Library</p>
+          <h1 className="text-display mt-1 text-ink">Content Assets</h1>
+        </div>
+        <button onClick={create} className="btn btn-primary">
+          <Plus size={16} /> New Asset
+        </button>
+      </div>
+
+      {/* Toolbar */}
+      <div className="flex flex-col gap-3 rounded-xl border bg-surface p-2 sm:flex-row sm:items-center sm:justify-between">
+        <div className="relative w-full sm:w-96">
+          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
+          <input
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            className="input w-full border-none bg-transparent pl-9 shadow-none focus:ring-0"
+            placeholder="Search assets by name or ID..."
+          />
+        </div>
+        <div className="flex items-center gap-2 px-2 sm:px-0">
+          <div className="h-6 w-px bg-line" />
+          <button className="btn btn-ghost btn-sm text-muted">
+            <Filter size={14} /> Filter
+          </button>
+          <div className="flex rounded-lg bg-surface-alt p-1">
+            <button
+              onClick={() => setViewMode('grid')}
+              className={`rounded-md p-1.5 transition-colors ${viewMode === 'grid' ? 'bg-surface text-ink shadow-sm' : 'text-muted hover:text-ink'}`}
+            >
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M2 2h5v5H2V2zm7 0h5v5H9V2zM2 9h5v5H2V9zm7 0h5v5H9V9z"/></svg>
+            </button>
+            <button
+              onClick={() => setViewMode('list')}
+              className={`rounded-md p-1.5 transition-colors ${viewMode === 'list' ? 'bg-surface text-ink shadow-sm' : 'text-muted hover:text-ink'}`}
+            >
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M2 3h12v2H2V3zm0 4h12v2H2V7zm0 4h12v2H2v-2z"/></svg>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Content Area */}
+      {isLoading ? (
+        <div className={`grid gap-4 ${viewMode === 'grid' ? 'sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4' : 'grid-cols-1'}`}>
+          {[1, 2, 3, 4, 5, 6].map((i) => (
+            <div key={i} className={`skeleton card ${viewMode === 'grid' ? 'h-64' : 'h-20'}`} />
+          ))}
+        </div>
+      ) : error ? (
+        <div className="card border-danger/30 bg-danger-light p-6 text-center text-danger">
+          <ShieldAlert size={24} className="mx-auto mb-2" />
+          <p className="font-semibold">{error.message}</p>
+        </div>
+      ) : data?.length ? (
+        <div className={`grid gap-4 ${viewMode === 'grid' ? 'sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4' : 'grid-cols-1'}`}>
+          {data.map((c) => (
+            <div key={c.id} className={`card card-hover group flex ${viewMode === 'list' ? 'items-center p-3' : 'flex-col overflow-hidden'}`}>
+              {/* Preview Thumbnail */}
+              <div className={`flex items-center justify-center bg-surface-alt ${viewMode === 'list' ? 'h-14 w-14 shrink-0 rounded-lg' : 'aspect-video w-full'}`}>
+                {getIcon(c.type)}
+              </div>
+              
+              {/* Details */}
+              <div className={`flex flex-1 flex-col ${viewMode === 'list' ? 'ml-4' : 'p-4'}`}>
+                <div className="flex items-start justify-between gap-2">
+                  <h3 className="truncate font-semibold text-ink" title={c.title}>{c.title}</h3>
+                  <button className="rounded p-1 text-muted opacity-0 transition-opacity hover:bg-surface-alt hover:text-ink group-hover:opacity-100">
+                    <MoreVertical size={16} />
+                  </button>
+                </div>
+                
+                {viewMode === 'list' ? (
+                  <div className="mt-1 flex items-center gap-4 text-sm text-muted">
+                    <span className="flex items-center gap-1.5"><FileText size={12}/> {c.type}</span>
+                    <span>Added {new Date(c.createdAt).toLocaleDateString()}</span>
+                    <div className="ml-auto flex items-center gap-3">
+                      {getStatusBadge(c.status)}
+                      <button 
+                        onClick={async () => {
+                          await api(`/content/${c.id}/scan`, { method: 'POST' });
+                          qc.invalidateQueries({ queryKey: ['summary'] });
+                          alert('Scan triggered successfully');
+                        }}
+                        className="btn btn-secondary btn-sm"
+                      >
+                        Run Scan
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <div className="mt-2 flex items-center gap-2">
+                      <span className="badge badge-brand">{c.type}</span>
+                      {getStatusBadge(c.status)}
+                    </div>
+                    <div className="mt-auto pt-4 flex items-center justify-between border-t mt-4">
+                      <span className="text-caption text-muted">{new Date(c.createdAt).toLocaleDateString()}</span>
+                      <button 
+                        onClick={async () => {
+                          await api(`/content/${c.id}/scan`, { method: 'POST' });
+                          qc.invalidateQueries({ queryKey: ['summary'] });
+                          alert('Scan triggered successfully');
+                        }}
+                        className="text-sm font-semibold text-brand hover:underline"
+                      >
+                        Run Scan
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed py-24 text-center">
+          <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-brand/10">
+            <Library size={32} className="text-brand" />
+          </div>
+          <h2 className="text-heading font-bold text-ink">Your library is empty</h2>
+          <p className="mt-2 max-w-md text-sm text-muted">
+            Start protecting your digital assets by adding them to Sentinel. We support text, images, and video files.
+          </p>
+          <button onClick={create} className="btn btn-primary mt-6">
+            <Plus size={16} /> Add First Asset
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}

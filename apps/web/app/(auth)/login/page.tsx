@@ -4,64 +4,111 @@ import Link from 'next/link';
 import { useState } from 'react';
 import { api, useAuth } from '../../../lib/api';
 import { useRouter } from 'next/navigation';
-import { Button } from '../../../components/ui/button';
+import { Shield, Mail, Lock, Eye, EyeOff, ArrowRight } from 'lucide-react';
 
 export default function Login() {
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [showPw, setShowPw] = useState(false);
   const router = useRouter();
-  const setToken = useAuth((state) => state.setToken);
+  const setToken = useAuth((s) => s.setToken);
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-sm items-center p-5">
-      <form
-        className="card w-full p-6"
-        onSubmit={async (event) => {
-          event.preventDefault();
-          const form = event.currentTarget;
-          const data = new FormData(form);
-
-          try {
-            const response = await api<{ accessToken: string }>('/auth/login', {
-              method: 'POST',
-              body: JSON.stringify({
-                email: data.get('email'),
-                password: data.get('password'),
-              }),
-            });
-
-            setToken(response.accessToken);
-            router.push('/dashboard');
-          } catch (error) {
-            setError(error instanceof Error ? error.message : 'Unable to sign in');
-          }
-        }}
-      >
-        <p className="text-sm text-muted">Sentinel</p>
-        <h1 className="mb-6 text-2xl font-semibold">Sign in to your workspace</h1>
-
-        <label className="block text-sm">
-          Email
-          <input required name="email" type="email" className="mt-1 w-full rounded-lg border bg-transparent p-2" />
-        </label>
-
-        <label className="mt-4 block text-sm">
-          Password
-          <input required name="password" type="password" className="mt-1 w-full rounded-lg border bg-transparent p-2" />
-        </label>
-
-        {error ? <p className="mt-3 text-sm text-danger">{error}</p> : null}
-
-        <Button className="mt-5 w-full">Sign in</Button>
-
-        <div className="mt-4 flex justify-between text-sm">
-          <Link className="text-brand" href="/signup">
-            Create account
-          </Link>
-          <Link className="text-brand" href="/forgot-password">
-            Forgot password?
-          </Link>
+    <main className="flex min-h-screen items-center justify-center bg-canvas p-4">
+      <div className="absolute inset-0 overflow-hidden">
+        <div className="absolute -top-32 left-1/2 h-[500px] w-[500px] -translate-x-1/2 rounded-full bg-brand/5 blur-3xl" />
+      </div>
+      <div className="relative w-full max-w-md animate-slide-up">
+        {/* Logo */}
+        <div className="mb-8 flex flex-col items-center">
+          <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-brand shadow-lg shadow-brand/20">
+            <Shield size={24} className="text-white" />
+          </div>
+          <h1 className="text-2xl font-bold text-ink">Welcome back</h1>
+          <p className="mt-1 text-sm text-muted">Sign in to your Sentinel account</p>
         </div>
-      </form>
+
+        <form
+          className="card p-8"
+          onSubmit={async (e) => {
+            e.preventDefault();
+            setLoading(true);
+            setError('');
+            const d = new FormData(e.currentTarget);
+            try {
+              const res = await api<{ accessToken: string }>('/auth/login', {
+                method: 'POST',
+                body: JSON.stringify({ email: d.get('email'), password: d.get('password') }),
+              });
+              setToken(res.accessToken);
+              router.push('/dashboard');
+            } catch (err) {
+              setError(err instanceof Error ? err.message : 'Unable to sign in');
+            } finally {
+              setLoading(false);
+            }
+          }}
+        >
+          {/* Social Login */}
+          <button type="button" className="btn btn-secondary mb-3 w-full">
+            <svg viewBox="0 0 24 24" className="h-4 w-4"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+            Continue with Google
+          </button>
+
+          <div className="mb-5 flex items-center gap-4">
+            <div className="h-px flex-1 bg-line" />
+            <span className="text-caption text-muted">or</span>
+            <div className="h-px flex-1 bg-line" />
+          </div>
+
+          {/* Email */}
+          <label className="mb-4 block">
+            <span className="mb-1.5 block text-sm font-medium text-ink">Email</span>
+            <div className="relative">
+              <Mail size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted" />
+              <input required name="email" type="email" placeholder="you@company.com" className="input pl-10" />
+            </div>
+          </label>
+
+          {/* Password */}
+          <label className="mb-2 block">
+            <span className="mb-1.5 block text-sm font-medium text-ink">Password</span>
+            <div className="relative">
+              <Lock size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted" />
+              <input required name="password" type={showPw ? 'text' : 'password'} placeholder="••••••••" className="input pl-10 pr-10" />
+              <button type="button" onClick={() => setShowPw(!showPw)} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-muted hover:text-ink">
+                {showPw ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
+            </div>
+          </label>
+
+          <div className="mb-5 flex items-center justify-between">
+            <label className="flex items-center gap-2 text-sm text-muted">
+              <input type="checkbox" className="h-4 w-4 rounded border-line accent-brand" />
+              Remember me
+            </label>
+            <Link href="/forgot-password" className="text-sm font-medium text-brand hover:underline">
+              Forgot password?
+            </Link>
+          </div>
+
+          {error && (
+            <div className="mb-4 rounded-xl bg-danger-light p-3 text-sm text-danger">
+              {error}
+            </div>
+          )}
+
+          <button type="submit" disabled={loading} className="btn btn-primary w-full">
+            {loading ? 'Signing in...' : 'Sign In'}
+            {!loading && <ArrowRight size={16} />}
+          </button>
+        </form>
+
+        <p className="mt-6 text-center text-sm text-muted">
+          Don't have an account?{' '}
+          <Link href="/signup" className="font-semibold text-brand hover:underline">Create one</Link>
+        </p>
+      </div>
     </main>
   );
 }
