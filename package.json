@@ -2,7 +2,34 @@
   "name": "content-usage-tracking-system",
   "private": true,
   "packageManager": "pnpm@9.15.0",
-  "scripts": { "dev": "pnpm --parallel --filter @cut/api --filter @cut/web dev", "build": "pnpm -r build", "lint": "pnpm -r lint", "typecheck": "pnpm -r typecheck", "test": "pnpm -r test", "prepare": "husky" },
-  "devDependencies": { "@commitlint/cli": "^19.6.1", "@commitlint/config-conventional": "^19.6.0", "husky": "^9.1.7", "lint-staged": "^15.3.0", "prettier": "^3.4.2" },
-  "lint-staged": { "*.{ts,tsx,json,md,yml,yaml}": ["prettier --write"] }
+  "scripts": {
+    "dev": "pnpm --parallel --filter @cut/api --filter @cut/web dev",
+    "build": "pnpm -r build",
+    "lint": "pnpm -r lint",
+    "typecheck": "pnpm -r typecheck",
+    "test": "pnpm -r test",
+    "prepare": "husky"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "^19.6.1",
+    "@commitlint/config-conventional": "^19.6.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^15.3.0",
+    "prettier": "^3.4.2"
+  },
+  "lint-staged": {
+    "*.{ts,tsx,json,md,yml,yaml}": [
+      "prettier --write"
+    ]
+  },
+  "pnpm": {
+    "overrides": {
+      "tar": ">=7.5.19",
+      "glob": ">=10.5.0",
+      "postcss": ">=8.5.18",
+      "vite": ">=6.4.3",
+      "brace-expansion": ">=5.0.8",
+      "sharp": ">=0.35.0"
+    }
+  }
 }
