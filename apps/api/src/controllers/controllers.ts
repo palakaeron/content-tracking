@@ -177,9 +177,14 @@ export const analyticsController = {
       }),
     ]);
 
-    const highRisk = alertStats
-      .filter((row) => row.severity === 'HIGH' || row.severity === 'CRITICAL')
-      .reduce((sum, row) => sum + row._count._all, 0);
+    type AlertStatRow = {
+      severity: string;
+      _count: { _all: number };
+    };
+
+    const highRisk = (alertStats as AlertStatRow[])
+      .filter((row: AlertStatRow) => row.severity === 'HIGH' || row.severity === 'CRITICAL')
+      .reduce((sum: number, row: AlertStatRow) => sum + row._count._all, 0);
 
     const takedowns = await prisma.alert.count({
       where: { ownerId, status: 'CONFIRMED' },
