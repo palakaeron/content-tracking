@@ -1,10 +1,11 @@
 import { PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
+import { createClient } from '@supabase/supabase-js';
 import crypto from 'node:crypto';
 import path from 'node:path';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { env } from '../config/env.js';
 
-export type StorageAdapter = 'local' | 's3' | 'cloudinary';
+export type StorageAdapter = 'supabase' | 'local' | 's3' | 'cloudinary';
 
 export interface UploadResult {
   storageKey: string;
@@ -12,14 +13,19 @@ export interface UploadResult {
   adapter: StorageAdapter;
 }
 
+// Check Supabase availability
+const useSupabase = Boolean(env.SUPABASE_URL && env.SUPABASE_SERVICE_ROLE_KEY);
+const supabase = useSupabase
+  ? createClient(env.SUPABASE_URL!, env.SUPABASE_SERVICE_ROLE_KEY!)
+  : null;
+
 const useS3 = Boolean(
   env.S3_ENDPOINT && env.S3_BUCKET && env.S3_ACCESS_KEY_ID && env.S3_SECRET_ACCESS_KEY,
 );
 const useCloudinary = Boolean(env.CLOUDINARY_URL);
 
-const s3 =
-  useS3 ?
-    new S3Client({
+const s3 = useS3
+  ? new S3Client({
       region: env.S3_REGION,
       endpoint: env.S3_ENDPOINT,
       credentials: {
@@ -31,6 +37,33 @@ const s3 =
   : null;
 
 const uploadRoot = path.resolve(env.UPLOAD_DIR ?? path.join(process.cwd(), 'uploads'));
+
+async function uploadToSupabase(input: {
+  storageKey: string;
+  buffer: Buffer;
+  mimeType: string;
+}): Promise<UploadResult> {
+  const bucket = env.SUPABASE_STORAGE_BUCKET || 'content-uploads';
+
+  const { data, error } = await supabase!.storage
+    .from(bucket)
+    .upload(input.storageKey, input.buffer, {
+      contentType: input.mimeType,
+      upsert: true,
+    });
+
+  if (error) {
+    throw new Error(`Supabase upload failed: ${error.message}`);
+  }
+
+  const { data: publicUrlData } = supabase!.storage.from(bucket).getPublicUrl(input.storageKey);
+
+  return {
+    storageKey: input.storageKey,
+    storageLocation: publicUrlData.publicUrl,
+    adapter: 'supabase',
+  };
+}
 
 function parseCloudinaryUrl(raw: string): { cloudName: string; apiKey: string; apiSecret: string } {
   const url = new URL(raw);
@@ -123,6 +156,12 @@ export async function storeUpload(input: {
 }): Promise<UploadResult> {
   const storageKey = `${input.ownerId}/${input.contentId}/${crypto.randomUUID()}${input.extension}`;
 
+  // 1. Supabase Storage (Preferred)
+  if (useSupabase && supabase) {
+    return uploadToSupabase({ storageKey, buffer: input.buffer, mimeType: input.mimeType });
+  }
+
+  // 2. Cloudinary
   if (useCloudinary && env.CLOUDINARY_URL) {
     return uploadToCloudinary(
       { buffer: input.buffer, mimeType: input.mimeType, storageKey },
@@ -130,9 +169,11 @@ export async function storeUpload(input: {
     );
   }
 
+  // 3. AWS S3
   if (s3 && env.S3_BUCKET) {
     return uploadToS3({ storageKey, buffer: input.buffer, mimeType: input.mimeType });
   }
 
+  // 4. Local fallback
   return uploadToLocal({ storageKey, buffer: input.buffer });
 }
