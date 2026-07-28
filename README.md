@@ -55,11 +55,6 @@ During the deep-dive audit, the following issues were identified and **FIXED**:
 2. **Unescaped React Entities**: Fixed all `'` (single quote) ESLint violations in Next.js JSX templates (e.g. replaced with `&apos;`).
 3. **Accessibility (a11y)**: Added missing `aria-label` properties and `aria-hidden` tags to icon buttons in the mobile navigation AppShell.
 4. **Dynamic Badges**: The notification badge on the sidebar was statically coded to "3". Now fetches actual unhandled alerts.
+ 
 
-## 4. Remaining Items & Recommendations
-No blocking items remain. The codebase successfully passes `pnpm run build`, `pnpm run lint`, and `pnpm run test`. 
-
-**Next Steps for Deployment:**
-1. Update production `.env` with actual AWS S3 credentials and generate strong JWT keys.
-2. Switch Prisma from SQLite to PostgreSQL (Docker is already configured in `docker-compose.yml`).
 3. Implement a real `DetectionService` provider (currently using the simulated fallback).
