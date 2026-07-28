@@ -45,7 +45,7 @@ async function uploadToSupabase(input: {
 }): Promise<UploadResult> {
   const bucket = env.SUPABASE_STORAGE_BUCKET || 'content-uploads';
 
-  const { data, error } = await supabase!.storage
+  const { error } = await supabase!.storage
     .from(bucket)
     .upload(input.storageKey, input.buffer, {
       contentType: input.mimeType,
