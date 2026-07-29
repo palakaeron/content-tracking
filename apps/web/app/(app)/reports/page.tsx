@@ -57,15 +57,38 @@ export default function UsageReports() {
       const search = q ? `&search=${encodeURIComponent(q)}` : '';
       return api<ReportsResponse>(`/reports?page=${page}&limit=${limit}${search}`);
     },
+    staleTime: 0,
+    refetchOnMount: true,
+    refetchOnWindowFocus: true,
   });
 
-  // For CSV we fetch all reports (large limit) without pagination
+  // Fetch all reports across pages (max 100 per page, schema limit) and download as CSV
+  const [exporting, setExporting] = useState(false);
+
   const handleExportCSV = async () => {
+    setExporting(true);
     try {
-      const allReports = await api<ReportsResponse>('/reports?page=1&limit=1000');
-      const reports = Array.isArray(allReports) ? allReports : [];
+      const collected: Report[] = [];
+      let currentPage = 1;
+      const pageSize = 100; // max allowed by paginationSchema
+
+      // eslint-disable-next-line no-constant-condition
+      while (true) {
+        const batch = await api<ReportsResponse>(`/reports?page=${currentPage}&limit=${pageSize}`);
+        const items = Array.isArray(batch) ? batch : [];
+        collected.push(...items);
+        if (items.length < pageSize) break; // last page
+        currentPage += 1;
+        if (currentPage > 50) break; // safety cap at 5000 rows
+      }
+
+      if (collected.length === 0) {
+        setExporting(false);
+        return;
+      }
+
       const header = ['Asset Name', 'Platform', 'Confidence (%)', 'Match Type', 'Detection Date', 'Status', 'Source URL'];
-      const rows = reports.map((r) => [
+      const rows = collected.map((r) => [
         r.content.title,
         extractPlatform(r.sourceUrl),
         String(Math.round(r.confidence * 100)),
@@ -76,7 +99,9 @@ export default function UsageReports() {
       ]);
       downloadCSV(`sentinel-usage-reports-${new Date().toISOString().slice(0, 10)}.csv`, [header, ...rows]);
     } catch {
-      // silently ignore; user can retry
+      // silently ignore; button returns to normal state
+    } finally {
+      setExporting(false);
     }
   };
 
@@ -127,8 +152,8 @@ export default function UsageReports() {
           <h1 className="text-display mt-1 text-ink">Usage Reports</h1>
         </div>
         <div className="flex gap-3">
-          <button type="button" className="btn btn-secondary" onClick={handleExportCSV}>
-            <Download size={16} /> Export CSV
+          <button type="button" className="btn btn-secondary" onClick={handleExportCSV} disabled={exporting}>
+            <Download size={16} /> {exporting ? 'Exporting…' : 'Export CSV'}
           </button>
         </div>
       </div>

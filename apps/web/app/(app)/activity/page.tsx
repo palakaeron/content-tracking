@@ -79,6 +79,9 @@ export default function Activity() {
   const { data, isLoading, isError } = useQuery({
     queryKey: ['alerts'],
     queryFn: () => api<Alert[]>('/alerts'),
+    staleTime: 0,
+    refetchOnMount: true,
+    refetchOnWindowFocus: true,
   });
 
   const alerts: Alert[] = Array.isArray(data) ? (data as Alert[]) : [];

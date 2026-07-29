@@ -24,6 +24,9 @@ export default function Alerts() {
   const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['alerts'],
     queryFn: () => api<AlertItem[]>('/alerts'),
+    staleTime: 0,
+    refetchOnMount: true,
+    refetchOnWindowFocus: true,
   });
 
   const filteredData = data?.filter((alert) => tab === 'ALL' || alert.severity === tab) ?? [];

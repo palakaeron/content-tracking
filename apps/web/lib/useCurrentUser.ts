@@ -6,20 +6,33 @@ import { api, useAuth, type CurrentUser } from './api';
 
 /**
  * Returns the current authenticated user.
- * - Prefers the user object already in the Zustand store (set on login/signup).
- * - Falls back to fetching GET /auth/me when a token exists but the store has no user
- *   (e.g. after a hard page reload where only the token was persisted).
+ *
+ * Flow:
+ * 1. On first client render, calls `_hydrate()` to load token/user from localStorage.
+ *    This is deferred to after mount so the initial SSR render is always null→null
+ *    (no hydration mismatch).
+ * 2. Once hydrated, if a token exists but no user object is cached, fetches GET /auth/me.
+ * 3. Syncs the fetched user back into the store.
  */
 export function useCurrentUser() {
+  const hydrated = useAuth((s) => s._hydrated);
+  const hydrate = useAuth((s) => s._hydrate);
   const token = useAuth((s) => s.token);
   const storeUser = useAuth((s) => s.user);
   const setUser = useAuth((s) => s.setUser);
 
+  // Run once after mount to read localStorage into the store
+  useEffect(() => {
+    if (!hydrated) {
+      hydrate();
+    }
+  }, [hydrated, hydrate]);
+
   const { data, isLoading } = useQuery<CurrentUser>({
     queryKey: ['current-user'],
     queryFn: () => api<CurrentUser>('/auth/me'),
-    // Only run the fetch when we have a token but no cached user info
-    enabled: !!token && !storeUser,
+    // Only fetch once the store has been hydrated, we have a token, but no cached user
+    enabled: hydrated && !!token && !storeUser,
     staleTime: 5 * 60 * 1000,
     retry: false,
   });
@@ -33,6 +46,7 @@ export function useCurrentUser() {
 
   return {
     user: storeUser ?? data ?? null,
-    isLoading: !storeUser && isLoading,
+    // Show loading only while actively fetching; not during the brief hydration tick
+    isLoading: hydrated && !storeUser && isLoading,
   };
 }

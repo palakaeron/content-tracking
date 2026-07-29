@@ -27,29 +27,19 @@ export type CurrentUser = {
 type AuthState = {
   token: string | null;
   user: CurrentUser | null;
+  _hydrated: boolean;
   setToken: (token: string | null) => void;
   setUser: (user: CurrentUser | null) => void;
   clear: () => void;
-};
-
-const readStoredToken = (): string | null => {
-  if (typeof window === 'undefined') return null;
-  return localStorage.getItem('access_token');
-};
-
-const readStoredUser = (): CurrentUser | null => {
-  if (typeof window === 'undefined') return null;
-  try {
-    const raw = localStorage.getItem('current_user');
-    return raw ? (JSON.parse(raw) as CurrentUser) : null;
-  } catch {
-    return null;
-  }
+  _hydrate: () => void;
 };
 
 export const useAuth = create<AuthState>((set) => ({
-  token: readStoredToken(),
-  user: readStoredUser(),
+  // Always start as null so server and client render identically (no hydration mismatch).
+  // The real values are read from localStorage in _hydrate(), called once on the client after mount.
+  token: null,
+  user: null,
+  _hydrated: false,
   setToken: (token) => {
     if (typeof window !== 'undefined') {
       if (token) localStorage.setItem('access_token', token);
@@ -70,6 +60,18 @@ export const useAuth = create<AuthState>((set) => ({
       localStorage.removeItem('current_user');
     }
     set({ token: null, user: null });
+  },
+  _hydrate: () => {
+    if (typeof window === 'undefined') return;
+    const token = localStorage.getItem('access_token');
+    let user: CurrentUser | null = null;
+    try {
+      const raw = localStorage.getItem('current_user');
+      user = raw ? (JSON.parse(raw) as CurrentUser) : null;
+    } catch {
+      user = null;
+    }
+    set({ token, user, _hydrated: true });
   },
 }));
 

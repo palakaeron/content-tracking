@@ -21,24 +21,51 @@ function extractDomain(url: string): string {
   }
 }
 
+/** Simulated platform sources for realism */
+const PLATFORMS = [
+  'instagram.com',
+  'pinterest.com',
+  'twitter.com',
+  'reddit.com',
+  'tumblr.com',
+  'flickr.com',
+  'unsplash.com',
+  'shutterstock.com',
+  'pexels.com',
+  'deviantart.com',
+];
+
 function formatMatch(
   content: { id: string; title: string; type: string },
   index: number,
   seed: number,
 ): DetectionMatch {
   const slug = content.title.toLowerCase().replace(/\s+/g, '-');
-  const sourceUrl = `https://example-source-${index + 1}.test/${encodeURIComponent(slug)}`;
-  const confidence = Number((0.62 + (((index * 17 + seed * 9) % 33) / 100)).toFixed(2));
-  const matchType = content.type === 'TEXT' ? 'Text similarity' : 'Visual similarity';
+  // Pick a realistic platform from the list
+  const platform = PLATFORMS[(seed + index * 3) % PLATFORMS.length];
+  const sourceUrl = `https://${platform}/content/${encodeURIComponent(slug)}-${seed.toString(16)}${index}`;
+
+  // Confidence range: 0.72 – 0.99  (spread across the full severity spectrum)
+  // Uses a wider spread so LOW/MEDIUM/HIGH/CRITICAL are all reachable
+  const raw = ((seed * 7 + index * 31) % 28) / 100; // 0.00 – 0.27
+  const confidence = Number((0.72 + raw).toFixed(2));
+
+  const matchType = content.type === 'IMAGE' ? 'Visual similarity'
+    : content.type === 'VIDEO' ? 'Video fingerprint'
+    : 'Text similarity';
 
   return { sourceUrl, confidence, matchType, domain: extractDomain(sourceUrl) };
 }
 
-/** Deterministic local simulator; swap providers without changing callers. */
+/** Deterministic local simulator — always returns at least 1 match per scan */
 export class SimulationDetectionProvider implements DetectionProvider {
   async scan(content: { id: string; title: string; type: string }): Promise<DetectionMatch[]> {
-    const seed = parseInt(crypto.createHash('sha256').update(content.id).digest('hex').slice(0, 2), 16);
-    const count = seed % 3;
+    const seed = parseInt(
+      crypto.createHash('sha256').update(content.id).digest('hex').slice(0, 4),
+      16,
+    );
+    // Always produce 1–3 matches so every scan yields detections and alerts
+    const count = 1 + (seed % 3); // 1, 2, or 3
     return Array.from({ length: count }, (_, index) => formatMatch(content, index, seed));
   }
 }
@@ -50,14 +77,16 @@ export function setDetectionProvider(provider: DetectionProvider): void {
 }
 
 function severityFor(confidence: number): 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL' {
-  if (confidence >= 0.92) return 'CRITICAL';
-  if (confidence >= 0.86) return 'HIGH';
-  if (confidence >= 0.8) return 'MEDIUM';
+  if (confidence >= 0.95) return 'CRITICAL';
+  if (confidence >= 0.88) return 'HIGH';
+  if (confidence >= 0.80) return 'MEDIUM';
   return 'LOW';
 }
 
 export async function scanContent(ownerId: string, id: string): Promise<number> {
-  const content = await prisma.content.findFirst({ where: { id, ownerId, NOT: { status: 'DELETED' } } });
+  const content = await prisma.content.findFirst({
+    where: { id, ownerId, NOT: { status: 'DELETED' } },
+  });
   if (!content) return 0;
 
   await prisma.content.update({ where: { id }, data: { status: 'SCANNING' } });
@@ -76,12 +105,11 @@ export async function scanContent(ownerId: string, id: string): Promise<number> 
     });
     created += 1;
 
+    // Create an alert for EVERY match — severity reflects how dangerous it is
     const severity = severityFor(match.confidence);
-    if (match.confidence >= 0.8) {
-      await prisma.alert.create({
-        data: { ownerId, reportId: report.id, severity },
-      });
-    }
+    await prisma.alert.create({
+      data: { ownerId, reportId: report.id, severity },
+    });
 
     await audit(ownerId, 'DETECTION_MATCH', undefined, {
       contentId: id,
@@ -93,7 +121,10 @@ export async function scanContent(ownerId: string, id: string): Promise<number> 
   }
 
   await prisma.content.update({ where: { id }, data: { status: 'AVAILABLE' } });
-  await audit(ownerId, 'CONTENT_SCANNED', undefined, { contentId: id, matchesFound: created });
+  await audit(ownerId, 'CONTENT_SCANNED', undefined, {
+    contentId: id,
+    matchesFound: created,
+  });
 
   return created;
 }
