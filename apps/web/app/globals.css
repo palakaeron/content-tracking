@@ -1,8 +1,8 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
 @layer base {
   :root {
@@ -59,7 +59,10 @@
     -moz-osx-font-smoothing: grayscale;
   }
 
-  button, input, select, textarea {
+  button,
+  input,
+  select,
+  textarea {
     font: inherit;
   }
 
@@ -72,13 +75,16 @@
     width: 6px;
     height: 6px;
   }
+
   ::-webkit-scrollbar-track {
     background: transparent;
   }
+
   ::-webkit-scrollbar-thumb {
     background: hsl(var(--muted) / 0.3);
     border-radius: 9999px;
   }
+
   ::-webkit-scrollbar-thumb:hover {
     background: hsl(var(--muted) / 0.5);
   }
@@ -89,18 +95,21 @@
     background: hsl(var(--surface));
     border: 1px solid hsl(var(--line));
     border-radius: 16px;
-    box-shadow: 0 1px 3px 0 rgba(0,0,0,0.04), 0 1px 2px -1px rgba(0,0,0,0.03);
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.04), 0 1px 2px -1px rgba(0, 0, 0, 0.03);
     transition: box-shadow 0.2s ease, transform 0.2s ease;
   }
+
   .card-hover:hover {
-    box-shadow: 0 4px 12px 0 rgba(0,0,0,0.06), 0 2px 4px -2px rgba(0,0,0,0.04);
+    box-shadow: 0 4px 12px 0 rgba(0, 0, 0, 0.06), 0 2px 4px -2px rgba(0, 0, 0, 0.04);
     transform: translateY(-1px);
   }
+
   .card-interactive {
     cursor: pointer;
   }
+
   .card-interactive:hover {
-    box-shadow: 0 4px 12px 0 rgba(0,0,0,0.06), 0 2px 4px -2px rgba(0,0,0,0.04);
+    box-shadow: 0 4px 12px 0 rgba(0, 0, 0, 0.06), 0 2px 4px -2px rgba(0, 0, 0, 0.04);
     transform: translateY(-1px);
   }
 
@@ -120,9 +129,11 @@
     color: hsl(var(--ink));
     transition: border-color 0.15s ease, box-shadow 0.15s ease;
   }
+
   .input::placeholder {
     color: hsl(var(--muted));
   }
+
   .input:focus {
     outline: none;
     border-color: hsl(var(--brand));
@@ -142,47 +153,58 @@
     cursor: pointer;
     white-space: nowrap;
   }
+
   .btn:disabled {
     opacity: 0.5;
     cursor: not-allowed;
   }
+
   .btn-primary {
     background: hsl(var(--brand));
     color: white;
   }
+
   .btn-primary:hover:not(:disabled) {
     background: hsl(var(--brand-dark));
     box-shadow: 0 2px 8px hsl(var(--brand) / 0.25);
   }
+
   .btn-secondary {
     background: hsl(var(--surface));
     color: hsl(var(--ink));
     border: 1px solid hsl(var(--line));
   }
+
   .btn-secondary:hover:not(:disabled) {
     background: hsl(var(--surface-alt));
     border-color: hsl(var(--muted) / 0.3);
   }
+
   .btn-ghost {
     background: transparent;
     color: hsl(var(--ink-secondary));
   }
+
   .btn-ghost:hover:not(:disabled) {
     background: hsl(var(--surface-alt));
     color: hsl(var(--ink));
   }
+
   .btn-danger {
     background: hsl(var(--danger));
     color: white;
   }
+
   .btn-danger:hover:not(:disabled) {
     opacity: 0.9;
   }
+
   .btn-sm {
     padding: 6px 12px;
     font-size: 0.75rem;
     border-radius: 8px;
   }
+
   .btn-lg {
     padding: 12px 24px;
     font-size: 1rem;
@@ -198,22 +220,27 @@
     font-weight: 600;
     line-height: 1.25rem;
   }
+
   .badge-success {
     background: hsl(var(--success-light));
     color: hsl(var(--success));
   }
+
   .badge-warning {
     background: hsl(var(--warning-light));
     color: hsl(var(--warning));
   }
+
   .badge-danger {
     background: hsl(var(--danger-light));
     color: hsl(var(--danger));
   }
+
   .badge-brand {
     background: hsl(var(--brand-light));
     color: hsl(var(--brand));
   }
+
   .badge-neutral {
     background: hsl(var(--surface-alt));
     color: hsl(var(--muted));
@@ -241,9 +268,23 @@
 }
 
 @layer utilities {
-  .stagger-1 { animation-delay: 0.05s; }
-  .stagger-2 { animation-delay: 0.1s; }
-  .stagger-3 { animation-delay: 0.15s; }
-  .stagger-4 { animation-delay: 0.2s; }
-  .stagger-5 { animation-delay: 0.25s; }
+  .stagger-1 {
+    animation-delay: 0.05s;
+  }
+
+  .stagger-2 {
+    animation-delay: 0.1s;
+  }
+
+  .stagger-3 {
+    animation-delay: 0.15s;
+  }
+
+  .stagger-4 {
+    animation-delay: 0.2s;
+  }
+
+  .stagger-5 {
+    animation-delay: 0.25s;
+  }
 }
