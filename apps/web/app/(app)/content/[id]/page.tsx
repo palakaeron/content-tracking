@@ -3,6 +3,24 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../../../../lib/api';
 import { useState } from 'react';
+
+type ContentDetail = {
+  id: string;
+  title: string;
+  type: string;
+  status: string;
+  createdAt: string;
+  byteSize?: number;
+  textBody?: string;
+  _count?: { reports: number };
+  reports?: Array<{
+    id: string;
+    sourceUrl: string;
+    detectedAt?: string;
+    createdAt?: string;
+    confidence: number;
+  }>;
+};
 import { FileText, Calendar, Shield, Activity, MoreHorizontal, Trash, Scan, ImageIcon, Play, Loader2, CheckCircle2 } from 'lucide-react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
@@ -17,7 +35,7 @@ export default function ContentDetail() {
 
   const { data: c, isLoading } = useQuery({
     queryKey: ['content', id],
-    queryFn: () => api<any>(`/content/${id}`),
+    queryFn: () => api<ContentDetail>(`/content/${id}`),
   });
 
   const handleScan = async () => {
@@ -167,7 +185,7 @@ export default function ContentDetail() {
             </div>
             {c.reports && c.reports.length > 0 ? (
               <div className="divide-y divide-line">
-                {c.reports.map((r: any) => (
+                {(c.reports ?? []).map((r) => (
                   <div key={r.id} className="flex items-center justify-between py-3">
                     <div>
                       <a href={r.sourceUrl} target="_blank" rel="noopener noreferrer" className="font-medium text-ink hover:text-brand">{r.sourceUrl}</a>

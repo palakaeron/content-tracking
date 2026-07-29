@@ -64,7 +64,15 @@ const SEVERITY_BADGE: Record<string, string> = {
 };
 
 /* Custom tooltip for the area chart */
-function ChartTooltip({ active, payload, label }: any) {
+function ChartTooltip({
+  active,
+  payload,
+  label,
+}: {
+  active?: boolean;
+  payload?: Array<{ value: number }>;
+  label?: string;
+}) {
   if (!active || !payload?.length) return null;
   return (
     <div className="rounded-xl border bg-surface px-3 py-2 shadow-lg text-sm">
