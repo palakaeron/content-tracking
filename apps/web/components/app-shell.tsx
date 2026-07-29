@@ -2,7 +2,8 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { api } from '../lib/api';
+import { api, getInitials } from '../lib/api';
+import { useCurrentUser } from '../lib/useCurrentUser';
 import {
   LayoutDashboard, Library, Upload, BarChart3, FileText,
   Bell, Activity, Settings, HelpCircle, Search, SunMoon,
@@ -30,6 +31,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
+
+  const { user } = useCurrentUser();
+  const userInitials = getInitials(user?.name);
 
   const { data: alertsData } = useQuery<{ length: number }>({ 
     queryKey: ['alerts'],
@@ -231,8 +235,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <Link
               href="/profile"
               className="focus-ring ml-1 flex h-8 w-8 items-center justify-center rounded-full bg-brand text-xs font-bold text-white transition-opacity hover:opacity-90"
+              aria-label="View profile"
             >
-              JD
+              {userInitials}
             </Link>
           </div>
         </header>

@@ -33,6 +33,19 @@ function reportStatus(report: Report): string {
   return 'PENDING';
 }
 
+function downloadCSV(filename: string, rows: string[][]): void {
+  const csv = rows
+    .map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+    .join('\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
 export default function UsageReports() {
   const [q, setQ] = useState('');
   const [page, setPage] = useState(1);
@@ -45,6 +58,27 @@ export default function UsageReports() {
       return api<ReportsResponse>(`/reports?page=${page}&limit=${limit}${search}`);
     },
   });
+
+  // For CSV we fetch all reports (large limit) without pagination
+  const handleExportCSV = async () => {
+    try {
+      const allReports = await api<ReportsResponse>('/reports?page=1&limit=1000');
+      const reports = Array.isArray(allReports) ? allReports : [];
+      const header = ['Asset Name', 'Platform', 'Confidence (%)', 'Match Type', 'Detection Date', 'Status', 'Source URL'];
+      const rows = reports.map((r) => [
+        r.content.title,
+        extractPlatform(r.sourceUrl),
+        String(Math.round(r.confidence * 100)),
+        r.matchType,
+        new Date(r.detectedAt).toLocaleDateString(),
+        reportStatus(r),
+        r.sourceUrl,
+      ]);
+      downloadCSV(`sentinel-usage-reports-${new Date().toISOString().slice(0, 10)}.csv`, [header, ...rows]);
+    } catch {
+      // silently ignore; user can retry
+    }
+  };
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -93,7 +127,7 @@ export default function UsageReports() {
           <h1 className="text-display mt-1 text-ink">Usage Reports</h1>
         </div>
         <div className="flex gap-3">
-          <button type="button" className="btn btn-secondary">
+          <button type="button" className="btn btn-secondary" onClick={handleExportCSV}>
             <Download size={16} /> Export CSV
           </button>
         </div>

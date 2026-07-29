@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useState } from 'react';
-import { api, useAuth } from '../../../lib/api';
+import { api, useAuth, type CurrentUser } from '../../../lib/api';
 import { useRouter } from 'next/navigation';
 import { Shield, Mail, Lock, User, Eye, EyeOff, ArrowRight } from 'lucide-react';
 
@@ -12,6 +12,7 @@ export default function Signup() {
   const [showPw, setShowPw] = useState(false);
   const router = useRouter();
   const setToken = useAuth((s) => s.setToken);
+  const setUser = useAuth((s) => s.setUser);
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-canvas p-4">
@@ -35,11 +36,12 @@ export default function Signup() {
             setError('');
             const d = new FormData(e.currentTarget);
             try {
-              const res = await api<{ accessToken: string }>('/auth/signup', {
+              const res = await api<{ user: CurrentUser; accessToken: string }>('/auth/signup', {
                 method: 'POST',
                 body: JSON.stringify({ name: d.get('name'), email: d.get('email'), password: d.get('password') }),
               });
               setToken(res.accessToken);
+              setUser(res.user);
               router.push('/dashboard');
             } catch (err) {
               setError(err instanceof Error ? err.message : 'Unable to create account');

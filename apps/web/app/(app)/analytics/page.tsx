@@ -16,6 +16,21 @@ type Summary = {
 
 const CHART_COLORS = ['hsl(var(--brand))', 'hsl(var(--accent))', 'hsl(var(--warning))', 'hsl(var(--success))'];
 
+function downloadCSV(filename: string, rows: string[][]): void {
+  const csv = rows
+    .map((row) =>
+      row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(','),
+    )
+    .join('\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
 export default function Analytics() {
   const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['summary'],
@@ -27,6 +42,36 @@ export default function Analytics() {
       name: item.title.length > 18 ? `${item.title.slice(0, 18)}…` : item.title,
       uses: item._count.reports,
     })) ?? [];
+
+  const handleExport = () => {
+    if (!data) return;
+
+    const header = ['Asset Title', 'Detected Uses'];
+    const assetRows = data.ranking.map((item) => [item.title, String(item._count.reports)]);
+
+    const platformHeader = ['Platform', 'Detections'];
+    const platformRows = data.platformDistribution.map((p) => [p.platform, String(p.count)]);
+
+    const summaryRows: string[][] = [
+      ['=== Analytics Report ===', ''],
+      ['Generated', new Date().toLocaleString()],
+      [''],
+      ['Detection Rate', `${data.detectionRate}%`],
+      ['High Risk Violations', String(data.highRiskViolations)],
+      ['Takedowns Filed', String(data.takedownsFiled)],
+      ['Total Detections', String(data.totalUses)],
+      [''],
+      ['=== Most Detected Assets ===', ''],
+      header,
+      ...assetRows,
+      [''],
+      ['=== Platform Distribution ===', ''],
+      platformHeader,
+      ...platformRows,
+    ];
+
+    downloadCSV(`sentinel-analytics-${new Date().toISOString().slice(0, 10)}.csv`, summaryRows);
+  };
 
   if (isError) {
     return (
@@ -50,7 +95,7 @@ export default function Analytics() {
           <button type="button" className="btn btn-secondary bg-surface">
             <Calendar size={16} /> Last 30 Days <ChevronDown size={14} />
           </button>
-          <button type="button" className="btn btn-primary">
+          <button type="button" className="btn btn-primary" onClick={handleExport} disabled={!data}>
             <Download size={16} /> Export Report
           </button>
         </div>

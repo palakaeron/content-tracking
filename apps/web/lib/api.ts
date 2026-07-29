@@ -16,9 +16,19 @@ export class ApiError extends Error {
   }
 }
 
+export type CurrentUser = {
+  id: string;
+  email: string;
+  name: string;
+  role: string;
+  createdAt: string;
+};
+
 type AuthState = {
   token: string | null;
+  user: CurrentUser | null;
   setToken: (token: string | null) => void;
+  setUser: (user: CurrentUser | null) => void;
   clear: () => void;
 };
 
@@ -27,8 +37,19 @@ const readStoredToken = (): string | null => {
   return localStorage.getItem('access_token');
 };
 
+const readStoredUser = (): CurrentUser | null => {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = localStorage.getItem('current_user');
+    return raw ? (JSON.parse(raw) as CurrentUser) : null;
+  } catch {
+    return null;
+  }
+};
+
 export const useAuth = create<AuthState>((set) => ({
   token: readStoredToken(),
+  user: readStoredUser(),
   setToken: (token) => {
     if (typeof window !== 'undefined') {
       if (token) localStorage.setItem('access_token', token);
@@ -36,11 +57,29 @@ export const useAuth = create<AuthState>((set) => ({
     }
     set({ token });
   },
+  setUser: (user) => {
+    if (typeof window !== 'undefined') {
+      if (user) localStorage.setItem('current_user', JSON.stringify(user));
+      else localStorage.removeItem('current_user');
+    }
+    set({ user });
+  },
   clear: () => {
-    if (typeof window !== 'undefined') localStorage.removeItem('access_token');
-    set({ token: null });
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('access_token');
+      localStorage.removeItem('current_user');
+    }
+    set({ token: null, user: null });
   },
 }));
+
+/** Returns initials (e.g. "JD") from a full name */
+export function getInitials(name: string | null | undefined): string {
+  if (!name) return '??';
+  const parts = name.trim().split(/\s+/);
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}
 
 function getCsrfToken(): string | undefined {
   if (typeof document === 'undefined') return undefined;

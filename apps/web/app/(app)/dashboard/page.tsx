@@ -1,9 +1,10 @@
 'use client';
 
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../../../lib/api';
 import Link from 'next/link';
-import { Upload, Activity, ShieldAlert, ArrowUpRight, ArrowDownRight, MoreHorizontal } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Upload, Activity, ShieldAlert, ArrowUpRight, MoreHorizontal, Scan, CheckCircle2, X } from 'lucide-react';
 
 type Summary = {
   totalContent: number;
@@ -19,11 +20,47 @@ type Summary = {
   }>;
 };
 
+type LastScanResult = {
+  assetTitle: string;
+  detectionsFound: number;
+  scannedAt: string;
+};
+
+const LAST_SCAN_KEY = 'sentinel_last_scan';
+
+export function saveLastScanResult(result: LastScanResult) {
+  if (typeof window !== 'undefined') {
+    localStorage.setItem(LAST_SCAN_KEY, JSON.stringify(result));
+  }
+}
+
 export default function Dashboard() {
+  const qc = useQueryClient();
   const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['summary'],
     queryFn: () => api<Summary>('/analytics/summary'),
   });
+
+  const [lastScan, setLastScan] = useState<LastScanResult | null>(null);
+  const [scanBannerVisible, setScanBannerVisible] = useState(false);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(LAST_SCAN_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw) as LastScanResult;
+        setLastScan(parsed);
+        setScanBannerVisible(true);
+      }
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  const dismissScanBanner = () => {
+    setScanBannerVisible(false);
+    localStorage.removeItem(LAST_SCAN_KEY);
+  };
 
   const maxTrend = Math.max(...(data?.detectionTrend.map((point) => point.count) ?? [1]), 1);
 
@@ -60,6 +97,39 @@ export default function Dashboard() {
           <Upload size={16} /> Add Content
         </Link>
       </div>
+
+      {/* Last Scan Results Banner */}
+      {scanBannerVisible && lastScan && (
+        <div className="flex items-start justify-between gap-4 rounded-xl border border-success/30 bg-success-light px-5 py-4 animate-fade-in">
+          <div className="flex items-center gap-3">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-success/20">
+              <CheckCircle2 size={18} className="text-success" />
+            </div>
+            <div>
+              <p className="font-semibold text-ink">
+                Last scan completed — {lastScan.detectionsFound} new detection{lastScan.detectionsFound !== 1 ? 's' : ''} found
+              </p>
+              <p className="mt-0.5 text-sm text-muted">
+                Asset: <span className="font-medium text-ink-secondary">{lastScan.assetTitle}</span>
+                {' '}·{' '}
+                {new Date(lastScan.scannedAt).toLocaleString()}
+              </p>
+            </div>
+          </div>
+          <div className="flex shrink-0 items-center gap-2">
+            <Link href="/analytics" className="btn btn-secondary btn-sm">
+              View Analytics <ArrowUpRight size={14} />
+            </Link>
+            <button
+              onClick={dismissScanBanner}
+              className="rounded-lg p-1.5 text-muted hover:bg-success/10 hover:text-ink"
+              aria-label="Dismiss"
+            >
+              <X size={16} />
+            </button>
+          </div>
+        </div>
+      )}
 
       <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {cards.map((card) => (
@@ -155,6 +225,9 @@ export default function Dashboard() {
                 </div>
                 <p className="text-sm font-medium text-ink">No activity yet</p>
                 <p className="mt-1 text-caption text-muted">Scan an item in your library to see detections here.</p>
+                <Link href="/content" className="btn btn-secondary btn-sm mt-4">
+                  <Scan size={14} /> Go to Content Library
+                </Link>
               </div>
             )}
           </div>

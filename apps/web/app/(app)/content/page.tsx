@@ -3,7 +3,8 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../../../lib/api';
 import { useState } from 'react';
-import { Search, Plus, Filter, MoreVertical, FileText, ImageIcon, Play, CheckCircle2, ShieldAlert, Library } from 'lucide-react';
+import { Search, Plus, Filter, MoreVertical, FileText, ImageIcon, Play, CheckCircle2, ShieldAlert, Library, Loader2 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 
 type C = {
   id: string;
@@ -16,8 +17,10 @@ type C = {
 export default function Content() {
   const [q, setQ] = useState('');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [scanningId, setScanningId] = useState<string | null>(null);
   const qc = useQueryClient();
-  
+  const router = useRouter();
+
   const { data, isLoading, error } = useQuery({
     queryKey: ['content', q],
     queryFn: () => api<C[]>(`/content?page=1&limit=50&search=${encodeURIComponent(q)}`),
@@ -31,6 +34,33 @@ export default function Content() {
         body: JSON.stringify({ title, type: 'TEXT', textBody: title }),
       });
       qc.invalidateQueries({ queryKey: ['content'] });
+    }
+  };
+
+  const runScan = async (id: string, title: string) => {
+    if (scanningId) return;
+    setScanningId(id);
+    try {
+      const result = await api<{ created: number }>(`/content/${id}/scan`, { method: 'POST' });
+
+      // Save result for dashboard banner
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(
+          'sentinel_last_scan',
+          JSON.stringify({
+            assetTitle: title,
+            detectionsFound: result.created,
+            scannedAt: new Date().toISOString(),
+          }),
+        );
+      }
+
+      qc.invalidateQueries({ queryKey: ['summary'] });
+      qc.invalidateQueries({ queryKey: ['reports'] });
+      qc.invalidateQueries({ queryKey: ['alerts'] });
+      router.push('/analytics');
+    } catch {
+      setScanningId(null);
     }
   };
 
@@ -131,15 +161,14 @@ export default function Content() {
                     <span>Added {new Date(c.createdAt).toLocaleDateString()}</span>
                     <div className="ml-auto flex items-center gap-3">
                       {getStatusBadge(c.status)}
-                      <button 
-                        onClick={async () => {
-                          await api(`/content/${c.id}/scan`, { method: 'POST' });
-                          qc.invalidateQueries({ queryKey: ['summary'] });
-                          alert('Scan triggered successfully');
-                        }}
+                      <button
+                        onClick={() => runScan(c.id, c.title)}
+                        disabled={!!scanningId}
                         className="btn btn-secondary btn-sm"
                       >
-                        Run Scan
+                        {scanningId === c.id ? (
+                          <><Loader2 size={14} className="animate-spin" /> Scanning…</>
+                        ) : 'Run Scan'}
                       </button>
                     </div>
                   </div>
@@ -151,15 +180,12 @@ export default function Content() {
                     </div>
                     <div className="mt-auto pt-4 flex items-center justify-between border-t mt-4">
                       <span className="text-caption text-muted">{new Date(c.createdAt).toLocaleDateString()}</span>
-                      <button 
-                        onClick={async () => {
-                          await api(`/content/${c.id}/scan`, { method: 'POST' });
-                          qc.invalidateQueries({ queryKey: ['summary'] });
-                          alert('Scan triggered successfully');
-                        }}
-                        className="text-sm font-semibold text-brand hover:underline"
+                      <button
+                        onClick={() => runScan(c.id, c.title)}
+                        disabled={!!scanningId}
+                        className="text-sm font-semibold text-brand hover:underline disabled:opacity-50"
                       >
-                        Run Scan
+                        {scanningId === c.id ? 'Scanning…' : 'Run Scan'}
                       </button>
                     </div>
                   </>

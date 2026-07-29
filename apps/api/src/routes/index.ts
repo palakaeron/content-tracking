@@ -37,6 +37,7 @@ auth.post('/logout', csrf, wrap(authController.logout));
 r.use('/auth', auth);
 
 r.use(requireAuth);
+r.get('/auth/me', wrap(authController.me));
 r.get('/content', validate(paginationSchema, 'query'), wrap(contentController.list));
 r.post('/content', csrf, validate(contentCreateSchema), wrap(contentController.create));
 r.post(

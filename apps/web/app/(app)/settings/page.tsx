@@ -2,6 +2,8 @@
 
 import { useState } from 'react';
 import { User, Bell, Shield, Key, CreditCard, MonitorSmartphone, Zap } from 'lucide-react';
+import { useCurrentUser } from '../../../lib/useCurrentUser';
+import { getInitials } from '../../../lib/api';
 
 const sections = [
   { id: 'profile', label: 'Profile', icon: User },
@@ -15,10 +17,15 @@ const sections = [
 
 export default function Settings() {
   const [activeTab, setActiveTab] = useState('profile');
+  const { user, isLoading } = useCurrentUser();
+
+  const nameParts = (user?.name ?? '').trim().split(/\s+/);
+  const firstName = nameParts[0] ?? '';
+  const lastName = nameParts.slice(1).join(' ');
+  const initials = getInitials(user?.name);
 
   return (
     <div className="animate-fade-in space-y-6">
-      {/* Header */}
       <div>
         <p className="text-sm font-semibold uppercase tracking-wider text-muted">Account</p>
         <h1 className="text-display mt-1 text-ink">Settings</h1>
@@ -54,31 +61,46 @@ export default function Settings() {
                 <p className="mt-1 text-sm text-muted">Update your account details and public profile.</p>
               </div>
               <div className="space-y-6 p-6">
-                <div className="flex items-center gap-6">
-                  <div className="flex h-20 w-20 items-center justify-center rounded-full bg-brand text-2xl font-bold text-white">
-                    JD
+                {isLoading ? (
+                  <div className="space-y-4">
+                    <div className="skeleton h-20 w-20 rounded-full" />
+                    <div className="skeleton h-10 w-full" />
+                    <div className="skeleton h-10 w-full" />
                   </div>
-                  <div>
-                    <button className="btn btn-secondary btn-sm mb-2">Change Avatar</button>
-                    <p className="text-xs text-muted">JPG, GIF or PNG. 1MB max.</p>
-                  </div>
-                </div>
-                
-                <div className="grid gap-6 sm:grid-cols-2">
-                  <label className="block">
-                    <span className="mb-1.5 block text-sm font-medium text-ink">First Name</span>
-                    <input type="text" className="input" defaultValue="John" />
-                  </label>
-                  <label className="block">
-                    <span className="mb-1.5 block text-sm font-medium text-ink">Last Name</span>
-                    <input type="text" className="input" defaultValue="Doe" />
-                  </label>
-                  <label className="block sm:col-span-2">
-                    <span className="mb-1.5 block text-sm font-medium text-ink">Email Address</span>
-                    <input type="email" className="input bg-surface-alt text-muted" defaultValue="john.doe@company.com" disabled />
-                    <p className="mt-1.5 text-xs text-muted">Contact support to change your email address.</p>
-                  </label>
-                </div>
+                ) : (
+                  <>
+                    <div className="flex items-center gap-6">
+                      <div className="flex h-20 w-20 items-center justify-center rounded-full bg-brand text-2xl font-bold text-white">
+                        {initials}
+                      </div>
+                      <div>
+                        <button className="btn btn-secondary btn-sm mb-2">Change Avatar</button>
+                        <p className="text-xs text-muted">JPG, GIF or PNG. 1MB max.</p>
+                      </div>
+                    </div>
+
+                    <div className="grid gap-6 sm:grid-cols-2">
+                      <label className="block">
+                        <span className="mb-1.5 block text-sm font-medium text-ink">First Name</span>
+                        <input type="text" className="input" defaultValue={firstName} />
+                      </label>
+                      <label className="block">
+                        <span className="mb-1.5 block text-sm font-medium text-ink">Last Name</span>
+                        <input type="text" className="input" defaultValue={lastName} />
+                      </label>
+                      <label className="block sm:col-span-2">
+                        <span className="mb-1.5 block text-sm font-medium text-ink">Email Address</span>
+                        <input
+                          type="email"
+                          className="input bg-surface-alt text-muted"
+                          defaultValue={user?.email ?? ''}
+                          disabled
+                        />
+                        <p className="mt-1.5 text-xs text-muted">Contact support to change your email address.</p>
+                      </label>
+                    </div>
+                  </>
+                )}
               </div>
               <div className="flex justify-end border-t bg-surface-alt/50 px-6 py-4 rounded-b-2xl">
                 <button className="btn btn-primary">Save Changes</button>
@@ -114,7 +136,7 @@ export default function Settings() {
                 {[
                   { title: 'High Risk Detections', desc: 'Email me when a 90%+ confidence match is found.' },
                   { title: 'Weekly Digest', desc: 'A weekly summary of your content performance.' },
-                  { title: 'Takedown Updates', desc: 'Status changes on your DMCA takedown requests.' }
+                  { title: 'Takedown Updates', desc: 'Status changes on your DMCA takedown requests.' },
                 ].map((n, i) => (
                   <div key={i} className="flex items-center justify-between p-6">
                     <div>
@@ -123,18 +145,17 @@ export default function Settings() {
                     </div>
                     <label className="relative inline-flex cursor-pointer items-center">
                       <input type="checkbox" className="peer sr-only" defaultChecked={i !== 1} />
-                      <div className="peer h-6 w-11 rounded-full bg-surface-alt after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-line after:bg-white after:transition-all after:content-[''] peer-checked:bg-brand peer-checked:after:translate-x-full peer-checked:after:border-white peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-brand/30"></div>
+                      <div className="peer h-6 w-11 rounded-full bg-surface-alt after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-line after:bg-white after:transition-all after:content-[''] peer-checked:bg-brand peer-checked:after:translate-x-full peer-checked:after:border-white peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-brand/30" />
                     </label>
                   </div>
                 ))}
               </div>
             </div>
           )}
-          
-          {/* Add a catch-all for other tabs */}
+
           {['api', 'billing', 'sessions', 'integrations'].includes(activeTab) && (
             <div className="card p-12 text-center text-muted">
-              <p className="font-semibold text-ink">{sections.find(s => s.id === activeTab)?.label} Settings</p>
+              <p className="font-semibold text-ink">{sections.find((s) => s.id === activeTab)?.label} Settings</p>
               <p className="mt-2 text-sm">This section is currently under development.</p>
             </div>
           )}

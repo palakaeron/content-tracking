@@ -58,6 +58,14 @@ export const authController = {
     res.clearCookie('refresh_token', { path: '/api/v1/auth' });
     send(res, {});
   },
+  me: async (req: Request, res: Response) => {
+    const user = await prisma.user.findUnique({
+      where: { id: req.user!.id },
+      select: { id: true, email: true, name: true, role: true, createdAt: true },
+    });
+    if (!user) throw new AppError(404, 'USER_NOT_FOUND', 'User not found');
+    send(res, user);
+  },
 };
 
 export const contentController = {
