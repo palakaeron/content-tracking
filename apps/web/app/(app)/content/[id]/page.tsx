@@ -189,7 +189,7 @@ export default function ContentDetail() {
                   <div key={r.id} className="flex items-center justify-between py-3">
                     <div>
                       <a href={r.sourceUrl} target="_blank" rel="noopener noreferrer" className="font-medium text-ink hover:text-brand">{r.sourceUrl}</a>
-                      <p className="text-sm text-muted">Detected on {new Date(r.detectedAt ?? r.createdAt).toLocaleDateString()}</p>
+                      <p className="text-sm text-muted">Detected on {new Date(r.detectedAt ?? r.createdAt ?? '').toLocaleDateString()}</p>
                     </div>
                     <span className="badge badge-warning">{Math.round(r.confidence * 100)}% Match</span>
                   </div>
